@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/server.ts",
-    "start": "ts-node src/server.ts",
+    "start": "node dist/server.js",
     "build": "tsc"
   },
   "keywords": [],
@@ -19,15 +19,15 @@
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "ioredis": "^5.9.2",
-    "mongoose": "^9.1.4"
-  },
-  "devDependencies": {
+    "mongoose": "^9.1.4",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/mongoose": "^5.11.97",
     "@types/node": "^25.0.9",
-    "nodemon": "^3.1.11",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/mongoose": "^5.11.97",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2"
   }
 }
