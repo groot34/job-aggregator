@@ -9,7 +9,14 @@ import jobRoutes from './routes/jobRoutes';
 // Middleware
 app.use(express.json({ limit: '50mb' })); // Increase limit for batches
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://scraphire.vercel.app', // Your actual Vercel URL
+    'https://*.vercel.app' // All Vercel preview deployments
+  ],
+  credentials: true
+}));
 app.use(helmet());
 
 // Routes
