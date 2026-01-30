@@ -23,7 +23,7 @@ func main() {
 
 	// Registry of parsers
 	siteParsers := []parsers.Parser{
-		&parsers.RemoteOKParser{},
+		&parsers.YCombinatorParser{},
 		&parsers.FreshersworldParser{},
 		&parsers.LinkedInParser{},
 		&parsers.WellfoundParser{},
@@ -43,7 +43,7 @@ func runScrapers(siteParsers []parsers.Parser) {
 			defer wg.Done()
 			fmt.Printf("🕷️  Starting scraper for: %s\n", parser.Name())
 
-			// For remoteOK we don't need a specific URL in Parse() args as it hits API internally
+			// For YC and others we don't need a specific URL in Parse() args
 			// But for interface consistency we might pass a dummy or specific start URL
 			jobs, err := parser.Parse("")
 			if err != nil {
