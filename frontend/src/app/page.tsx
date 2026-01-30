@@ -48,9 +48,9 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
-                 J
+                 S
                </div>
-               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">JobAggregator</h1>
+               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">ScrapHire</h1>
             </div>
 
             <form onSubmit={handleSearch} className="w-full md:w-96 relative">
