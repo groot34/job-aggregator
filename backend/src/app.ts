@@ -22,6 +22,18 @@ app.use(helmet());
 // Routes
 app.use('/api/jobs', jobRoutes);
 
+// Root Endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'Job Aggregator API is running 🚀', 
+    service: 'Job Aggregator Backend',
+    endpoints: {
+      health: '/health',
+      jobs: '/api/jobs'
+    }
+  });
+});
+
 // Health Check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'UP', message: 'Backend is running' });
