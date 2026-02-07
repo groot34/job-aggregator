@@ -7,20 +7,35 @@ dotenv.config();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/job-aggregator';
 
-const startServer = async () => {
-  try {
-    // Connect to MongoDB
-    await mongoose.connect(MONGO_URI);
-    console.log('✅ Connected to MongoDB');
+// MongoDB connection with caching for serverless
+let isConnected = false;
 
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
+const connectDB = async () => {
+  if (isConnected) {
+    return;
+  }
+
+  try {
+    await mongoose.connect(MONGO_URI);
+    isConnected = true;
+    console.log('✅ Connected to MongoDB');
   } catch (error) {
     console.error('❌ Failed to connect to MongoDB:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
-startServer();
-// restart
+// Local development: Start Express server
+if (process.env.NODE_ENV !== 'production') {
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  });
+}
+
+// Vercel serverless: Export handler
+export default async (req: any, res: any) => {
+  await connectDB();
+  return app(req, res);
+};
