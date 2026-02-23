@@ -69,3 +69,24 @@ export const getJobs = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error fetching jobs' });
   }
 };
+
+// DELETE /api/jobs/cleanup
+// Remove jobs older than 30 days
+export const cleanupOldJobs = async (req: Request, res: Response) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const result = await Job.deleteMany({ scrapedAt: { $lt: thirtyDaysAgo } });
+
+    console.log(`🧹 Cleanup: Removed ${result.deletedCount} jobs older than 30 days`);
+    res.status(200).json({
+      message: 'Cleanup complete',
+      deleted: result.deletedCount,
+      cutoffDate: thirtyDaysAgo.toISOString()
+    });
+  } catch (error) {
+    console.error('Error in cleanupOldJobs:', error);
+    res.status(500).json({ message: 'Error during cleanup' });
+  }
+};
