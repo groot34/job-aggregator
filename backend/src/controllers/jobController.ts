@@ -77,7 +77,7 @@ export const cleanupOldJobs = async (req: Request, res: Response) => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const result = await Job.deleteMany({ scrapedAt: { $lt: thirtyDaysAgo } });
+    const result = await Job.deleteMany({ postedAt: { $lt: thirtyDaysAgo } });
 
     console.log(`🧹 Cleanup: Removed ${result.deletedCount} jobs older than 30 days`);
     res.status(200).json({
