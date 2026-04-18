@@ -38,7 +38,7 @@ func (p *IndeedParser) Parse(arg string) ([]models.Job, error) {
 	ctx, cancel := chromedp.NewContext(allocCtx)
 	defer cancel()
 
-	ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 
 	var jobsData []map[string]interface{}
@@ -59,8 +59,8 @@ func (p *IndeedParser) Parse(arg string) ([]models.Job, error) {
 
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(targetURL),
-		chromedp.WaitVisible(`a.jcs-JobTitle[data-jk]`, chromedp.ByQuery),
-		chromedp.Sleep(3*time.Second),
+		chromedp.WaitReady("body", chromedp.ByQuery),
+		chromedp.Sleep(5*time.Second),
 		chromedp.Evaluate(js, &jobsData),
 	)
 	if err != nil {

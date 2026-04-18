@@ -72,8 +72,8 @@ func runScrapers(siteParsers []parsers.Parser) {
 				continue
 			}
 
-			// Check if it's a fresher/junior role (exclude senior ones)
-			if !skills.IsFresherJob(j.Title) {
+			// Check if it's a fresher/intern role and not senior-level
+			if !skills.IsFresherJob(j.Title, j.Description) {
 				continue
 			}
 

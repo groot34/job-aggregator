@@ -39,6 +39,11 @@ var SkillMap = map[string]string{
 	"express":                 "Express.js",
 	"expressjs":               "Express.js",
 	"django":                  "Django",
+	"software engineer":       "Software Engineer",
+	"software developer":      "Software Developer",
+	"software":                "Software",
+	"developer":               "Developer",
+	"engineer":                "Engineer",
 	"flask":                   "Flask",
 	"spring":                  "Spring",
 	"spring boot":             "Spring Boot",
@@ -154,24 +159,67 @@ func IsSoftwareJob(text string) bool {
 	return len(matched) > 0
 }
 
-// IsFresherJob filters out senior, staff, lead, and manager level jobs.
-func IsFresherJob(title string) bool {
-	titleLower := strings.ToLower(title)
-	
+// IsFresherJob filters for fresher/intern/junior roles and excludes senior-level or advanced openings.
+func IsFresherJob(title, description string) bool {
+	text := strings.ToLower(strings.TrimSpace(title + " " + description))
+
 	seniorKeywords := []string{
-		"senior", "sr", "sr.", "staff", "principal", "lead", 
-		"manager", "head", "director", "architect", "vp", "president", "ii", "iii",
+		"senior", "sr", "sr.", "staff", "principal", "lead",
+		"manager", "head", "director", "architect", "vp", "president", "supervisor", "ii", "iii",
 	}
 
 	for _, kw := range seniorKeywords {
 		strictKey := " " + kw + " "
-		if strings.HasPrefix(titleLower, kw+" ") || 
-		   strings.Contains(titleLower, strictKey) || 
-		   strings.HasSuffix(titleLower, " "+kw) || 
-		   titleLower == kw {
+		if strings.HasPrefix(text, kw+" ") ||
+			strings.Contains(text, strictKey) ||
+			strings.HasSuffix(text, " "+kw) ||
+			text == kw {
 			return false
 		}
 	}
-	
-	return true
+
+	juniorKeywords := []string{
+		"intern", "internship", "junior", "entry level", "entry-level", "associate", "trainee", "fresher", "graduate", "campus",
+	}
+
+	for _, kw := range juniorKeywords {
+		if strings.Contains(text, kw) {
+			return true
+		}
+	}
+
+	negativeExperiencePatterns := []string{
+		"3 year", "3 years", "4 year", "4 years", "5 year", "5 years", "6 year", "6 years", "7 year", "7 years", "8 year", "8 years", "9 year", "9 years", "10 year", "10 years",
+	}
+
+	for _, pat := range negativeExperiencePatterns {
+		if strings.Contains(text, pat) {
+			return false
+		}
+	}
+
+	experiencePatterns := []string{
+		"0-2 year", "0-2 years", "1-2 year", "1-2 years", "0 to 2 years", "1 to 2 years", "0-1 year", "0-1 years", "less than 2 years", "less than 1 year",
+		"1 year", "2 years",
+	}
+
+	for _, pat := range experiencePatterns {
+		if strings.Contains(text, pat) {
+			// Only accept if not senior-level and not clearly higher experience
+			return true
+		}
+	}
+
+	genericJuniorPatterns := []string{
+		"software engineer", "software developer", "developer", "programmer", "engineer",
+	}
+
+	for _, pat := range genericJuniorPatterns {
+		if strings.Contains(text, pat) {
+			return true
+		}
+	}
+
+	// If there is no junior-specific signal, reject to keep results strictly fresher/intern focused.
+	return false
 }
