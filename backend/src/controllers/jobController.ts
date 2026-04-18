@@ -1,6 +1,12 @@
 import { Request, Response } from 'express';
 import Job from '../models/Job';
 
+const SENIOR_TITLE_REGEX =
+  /\b(senior|sr\.?|staff|principal|lead|manager|head|director|architect|vp|president|supervisor|expert|specialist|consultant|sde\s*(2|ii|3|iii)|software engineer\s*(ii|iii|2|3)|developer\s*(ii|iii|2|3)|engineer\s*(ii|iii|2|3))\b/i;
+
+const HIGHER_EXPERIENCE_REGEX =
+  /\b((?:2|3|4|5|6|7|8|9|10)\+?\s*(?:year|years)|minimum\s*(?:2|3|4|5|6|7|8|9|10)\s*(?:year|years)|at least\s*(?:2|3|4|5|6|7|8|9|10)\s*(?:year|years)|(?:2|3|4|5|6|7|8|9|10)\s*(?:year|years)\s+of experience|(?:2|3|4|5|6|7|8|9|10)\s*(?:year|years)\s+experience)\b/i;
+
 // POST /api/jobs/batch
 // Receive a batch of jobs from the scraper
 export const createJobsBatch = async (req: Request, res: Response) => {
@@ -40,7 +46,11 @@ export const getJobs = async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 20, tag, search, remote, location, savedIds } = req.query;
     
-    const query: any = { active: true };
+    const query: any = {
+      active: true,
+      title: { $not: SENIOR_TITLE_REGEX },
+      description: { $not: HIGHER_EXPERIENCE_REGEX },
+    };
     
     if (savedIds) {
       const ids = (savedIds as string).split(',').filter(Boolean);

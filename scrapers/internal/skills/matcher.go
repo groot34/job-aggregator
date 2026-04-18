@@ -163,63 +163,68 @@ func IsSoftwareJob(text string) bool {
 func IsFresherJob(title, description string) bool {
 	text := strings.ToLower(strings.TrimSpace(title + " " + description))
 
-	seniorKeywords := []string{
-		"senior", "sr", "sr.", "staff", "principal", "lead",
-		"manager", "head", "director", "architect", "vp", "president", "supervisor", "ii", "iii",
-	}
-
-	for _, kw := range seniorKeywords {
-		strictKey := " " + kw + " "
-		if strings.HasPrefix(text, kw+" ") ||
-			strings.Contains(text, strictKey) ||
-			strings.HasSuffix(text, " "+kw) ||
-			text == kw {
-			return false
-		}
+	if hasAnyKeyword(text, seniorKeywords) || hasAnyKeyword(text, higherExperiencePatterns) {
+		return false
 	}
 
 	juniorKeywords := []string{
 		"intern", "internship", "junior", "entry level", "entry-level", "associate", "trainee", "fresher", "graduate", "campus",
+		"apprentice", "new grad", "new graduate", "graduate program", "graduate engineer trainee",
+		"sde 1", "sde i", "software engineer i", "software engineer 1", "developer i", "developer 1",
 	}
 
-	for _, kw := range juniorKeywords {
+	if hasAnyKeyword(text, juniorKeywords) {
+		return true
+	}
+
+	experiencePatterns := []string{
+		"0-1 year", "0-1 years", "0 to 1 year", "0 to 1 years",
+		"0-2 year", "0-2 years", "0 to 2 years",
+		"1 year", "1 years",
+		"1-2 year", "1-2 years", "1 to 2 years",
+		"less than 1 year", "less than 2 years",
+		"up to 1 year", "up to 2 years",
+		"no experience", "no prior experience", "fresh graduates", "recent graduates",
+	}
+
+	if hasAnyKeyword(text, experiencePatterns) {
+		return true
+	}
+
+	return false
+}
+
+var seniorKeywords = []string{
+	"senior", "sr", "sr.", "staff", "principal", "lead",
+	"manager", "head", "director", "architect", "vp", "president", "supervisor",
+	"mid senior", "mid-senior", "expert", "specialist", "consultant",
+	"sde 2", "sde ii", "sde 3", "sde iii", "software engineer ii", "software engineer iii",
+	"developer ii", "developer iii", "engineer ii", "engineer iii",
+}
+
+var higherExperiencePatterns = []string{
+	"2+ year", "2+ years", "3+ year", "3+ years", "4+ year", "4+ years", "5+ year", "5+ years",
+	"6+ year", "6+ years", "7+ year", "7+ years", "8+ year", "8+ years", "9+ year", "9+ years",
+	"10+ year", "10+ years",
+	"minimum 2 year", "minimum 2 years", "minimum 3 year", "minimum 3 years",
+	"minimum 4 year", "minimum 4 years", "minimum 5 year", "minimum 5 years",
+	"at least 2 year", "at least 2 years", "at least 3 year", "at least 3 years",
+	"at least 4 year", "at least 4 years", "at least 5 year", "at least 5 years",
+	"2 year experience", "2 years experience", "3 year experience", "3 years experience",
+	"4 year experience", "4 years experience", "5 year experience", "5 years experience",
+	"6 year experience", "6 years experience", "7 year experience", "7 years experience",
+	"8 year experience", "8 years experience", "9 year experience", "9 years experience",
+	"10 year experience", "10 years experience",
+	"2 years of experience", "3 years of experience", "4 years of experience", "5 years of experience",
+	"6 years of experience", "7 years of experience", "8 years of experience", "9 years of experience",
+	"10 years of experience",
+}
+
+func hasAnyKeyword(text string, keywords []string) bool {
+	for _, kw := range keywords {
 		if strings.Contains(text, kw) {
 			return true
 		}
 	}
-
-	negativeExperiencePatterns := []string{
-		"3 year", "3 years", "4 year", "4 years", "5 year", "5 years", "6 year", "6 years", "7 year", "7 years", "8 year", "8 years", "9 year", "9 years", "10 year", "10 years",
-	}
-
-	for _, pat := range negativeExperiencePatterns {
-		if strings.Contains(text, pat) {
-			return false
-		}
-	}
-
-	experiencePatterns := []string{
-		"0-2 year", "0-2 years", "1-2 year", "1-2 years", "0 to 2 years", "1 to 2 years", "0-1 year", "0-1 years", "less than 2 years", "less than 1 year",
-		"1 year", "2 years",
-	}
-
-	for _, pat := range experiencePatterns {
-		if strings.Contains(text, pat) {
-			// Only accept if not senior-level and not clearly higher experience
-			return true
-		}
-	}
-
-	genericJuniorPatterns := []string{
-		"software engineer", "software developer", "developer", "programmer", "engineer",
-	}
-
-	for _, pat := range genericJuniorPatterns {
-		if strings.Contains(text, pat) {
-			return true
-		}
-	}
-
-	// If there is no junior-specific signal, reject to keep results strictly fresher/intern focused.
 	return false
 }
