@@ -78,13 +78,3 @@ func (p *FreshersworldParser) Parse(arg string) ([]models.Job, error) {
 	fmt.Printf("✅ Found %d jobs from Freshersworld\n", len(jobs))
 	return jobs, nil
 }
-
-func getIDFromURL(url string) string {
-	// Simple hash or extraction
-	// e.g. .../job-id-12345
-	parts := strings.Split(url, "-")
-	if len(parts) > 0 {
-		return parts[len(parts)-1]
-	}
-	return fmt.Sprint(time.Now().UnixNano())
-}

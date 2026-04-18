@@ -153,3 +153,25 @@ func IsSoftwareJob(text string) bool {
 	matched := ExtractSkills(text)
 	return len(matched) > 0
 }
+
+// IsFresherJob filters out senior, staff, lead, and manager level jobs.
+func IsFresherJob(title string) bool {
+	titleLower := strings.ToLower(title)
+	
+	seniorKeywords := []string{
+		"senior", "sr", "sr.", "staff", "principal", "lead", 
+		"manager", "head", "director", "architect", "vp", "president", "ii", "iii",
+	}
+
+	for _, kw := range seniorKeywords {
+		strictKey := " " + kw + " "
+		if strings.HasPrefix(titleLower, kw+" ") || 
+		   strings.Contains(titleLower, strictKey) || 
+		   strings.HasSuffix(titleLower, " "+kw) || 
+		   titleLower == kw {
+			return false
+		}
+	}
+	
+	return true
+}

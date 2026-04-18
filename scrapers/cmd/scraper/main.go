@@ -26,6 +26,7 @@ func main() {
 		&parsers.YCombinatorParser{},
 		&parsers.FreshersworldParser{},
 		&parsers.LinkedInParser{},
+		&parsers.IndeedParser{},
 		&parsers.WellfoundParser{},
 		// Add more parsers here
 	}
@@ -68,6 +69,11 @@ func runScrapers(siteParsers []parsers.Parser) {
 			// Check if it's a software job
 			fullText := j.Title + " " + j.Description + " " + strings.Join(j.Tags, " ")
 			if !skills.IsSoftwareJob(fullText) {
+				continue
+			}
+
+			// Check if it's a fresher/junior role (exclude senior ones)
+			if !skills.IsFresherJob(j.Title) {
 				continue
 			}
 

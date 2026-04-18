@@ -38,12 +38,29 @@ export const createJobsBatch = async (req: Request, res: Response) => {
 // GET /api/jobs
 export const getJobs = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 20, tag, search } = req.query;
+    const { page = 1, limit = 20, tag, search, remote, location, savedIds } = req.query;
     
     const query: any = { active: true };
-    if (tag) {
-      query.tags = tag;
+    
+    if (savedIds) {
+      const ids = (savedIds as string).split(',').filter(Boolean);
+      if (ids.length > 0) {
+        query._id = { $in: ids };
+      }
     }
+
+    if (tag) {
+      query.tags = tag; // Wait, actually should probably handle multiple tags, maybe later, but let's just stick to single tag or whatever UI sends
+    }
+    
+    if (remote === 'true') {
+      query.remote = true;
+    }
+    
+    if (location) {
+      query.location = { $regex: location, $options: 'i' };
+    }
+
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },

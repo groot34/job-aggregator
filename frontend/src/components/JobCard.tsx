@@ -1,20 +1,35 @@
 import React from 'react';
 import { Job } from '../types/job';
-import { MapPin, Calendar, ExternalLink, Building2 } from 'lucide-react';
+import { MapPin, Calendar, ExternalLink, Building2, Bookmark, BookmarkCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface JobCardProps {
   job: Job;
+  onClick: (job: Job) => void;
+  isSaved: boolean;
+  onToggleSave: (id: string, e: React.MouseEvent) => void;
 }
 
-const JobCard: React.FC<JobCardProps> = ({ job }) => {
+const JobCard: React.FC<JobCardProps> = ({ job, onClick, isSaved, onToggleSave }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between h-full group relative overflow-hidden">
+    <div 
+      className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between h-full group relative overflow-hidden cursor-pointer"
+      onClick={() => onClick(job)}
+    >
       {/* Decorative gradient blob */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110" />
 
+      {/* Save Button */}
+      <button
+        onClick={(e) => onToggleSave(job._id, e)}
+        className="absolute top-4 right-4 z-10 p-2 rounded-full hover:bg-gray-100 transition-colors bg-white/50 backdrop-blur-sm"
+        title={isSaved ? "Remove from saved" : "Save job"}
+      >
+        {isSaved ? <BookmarkCheck className="w-5 h-5 text-blue-600" /> : <Bookmark className="w-5 h-5 text-gray-400 hover:text-blue-600" />}
+      </button>
+
       <div>
-        <div className="flex justify-between items-start mb-4">
+        <div className="flex justify-between items-start mb-4 pr-10">
           <div>
             <span className="inline-block px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-full mb-2">
               {job.source}
@@ -45,7 +60,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
         </div>
 
         <div className="flex flex-wrap gap-2 mb-6">
-          {job.tags.slice(0, 4).map((tag, i) => (
+          {job.tags.slice(0, 3).map((tag, i) => (
             <span 
               key={i} 
               className="px-2.5 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-md border border-gray-200"
@@ -53,9 +68,9 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
               {tag}
             </span>
           ))}
-          {job.tags.length > 4 && (
+          {job.tags.length > 3 && (
              <span className="px-2.5 py-0.5 text-xs font-medium text-gray-400 bg-gray-50 rounded-md">
-               +{job.tags.length - 4} more
+               +{job.tags.length - 3} more
              </span>
           )}
         </div>
@@ -65,6 +80,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
         href={job.url} 
         target="_blank" 
         rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
         className="block w-full bg-gray-900 hover:bg-blue-600 text-white text-center font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center group-hover:shadow-md"
       >
         Apply Now
