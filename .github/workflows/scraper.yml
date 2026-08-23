@@ -12,31 +12,28 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: "1.21"
 
-      - name: Install Chrome (for YC scraper)
-        run: |
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-
       - name: Cleanup old jobs (30+ days)
         env:
-          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
+          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL || secrets.BACKEND_URL }}
         run: |
-          CLEANUP_URL=$(echo "$BACKEND_API_URL" | sed 's|/batch|/cleanup|')
-          echo "🧹 Cleaning up old jobs..."
-          curl -s -X DELETE "$CLEANUP_URL" || echo "⚠️ Cleanup failed (non-critical)"
+          if [ -n "$BACKEND_API_URL" ]; then
+            CLEANUP_URL=$(echo "$BACKEND_API_URL" | sed 's|/batch|/cleanup|')
+            echo "🧹 Cleaning up old jobs from $CLEANUP_URL..."
+            curl -s -X DELETE "$CLEANUP_URL" || echo "⚠️ Cleanup failed (non-critical)"
+          else
+            echo "⚠️ BACKEND_API_URL secret not set. Skipping remote cleanup."
+          fi
 
       - name: Run Job Scraper
         env:
-          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
+          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL || secrets.BACKEND_URL }}
         run: |
           cd scrapers
           go run cmd/scraper/main.go

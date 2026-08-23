@@ -14,6 +14,9 @@ import (
 func PublishJobs(jobs []models.Job) error {
 	apiUrl := os.Getenv("BACKEND_API_URL")
 	if apiUrl == "" {
+		apiUrl = os.Getenv("BACKEND_URL")
+	}
+	if apiUrl == "" {
 		apiUrl = "http://localhost:5000/api/jobs/batch"
 	}
 
