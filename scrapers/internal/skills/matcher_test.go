@@ -22,10 +22,10 @@ func TestIsFresherJob(t *testing.T) {
 			want:        true,
 		},
 		{
-			name:        "rejects generic software engineer role without early career signals",
+			name:        "accepts software engineer role without senior indicators",
 			title:       "Software Engineer",
 			description: "Build product features with React and Node.js in a fast-moving team.",
-			want:        false,
+			want:        true,
 		},
 		{
 			name:        "rejects senior title even if software role",

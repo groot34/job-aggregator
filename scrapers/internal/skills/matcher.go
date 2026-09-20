@@ -39,11 +39,6 @@ var SkillMap = map[string]string{
 	"express":                 "Express.js",
 	"expressjs":               "Express.js",
 	"django":                  "Django",
-	"software engineer":       "Software Engineer",
-	"software developer":      "Software Developer",
-	"software":                "Software",
-	"developer":               "Developer",
-	"engineer":                "Engineer",
 	"flask":                   "Flask",
 	"spring":                  "Spring",
 	"spring boot":             "Spring Boot",
@@ -153,10 +148,74 @@ func ExtractSkills(text string) []string {
 	return output
 }
 
-// IsSoftwareJob checks if the job has enough technical signals to be a software job
+// IsSoftwareJob checks if the job has enough technical signals to be a software job.
+// Uses a combination of explicit tech-skill matches AND software-role title keywords,
+// so generic titles like "Software Engineer" still qualify even when no specific
+// language/framework is mentioned.
 func IsSoftwareJob(text string) bool {
-	matched := ExtractSkills(text)
-	return len(matched) > 0
+	if len(ExtractSkills(text)) > 0 {
+		return true
+	}
+
+	lower := strings.ToLower(text)
+	for _, kw := range softwareRoleKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
+}
+
+var softwareRoleKeywords = []string{
+	"software engineer",
+	"software developer",
+	"software engineering",
+	"web developer",
+	"frontend developer",
+	"frontend engineer",
+	"backend developer",
+	"backend engineer",
+	"full stack developer",
+	"full-stack developer",
+	"full stack engineer",
+	"full-stack engineer",
+	"devops engineer",
+	"site reliability engineer",
+	"sre ",
+	"data engineer",
+	"machine learning engineer",
+	"ml engineer",
+	"platform engineer",
+	"qa engineer",
+	"quality engineer",
+	"test engineer",
+	"automation engineer",
+	"systems engineer",
+	"cloud engineer",
+	"security engineer",
+	"android developer",
+	"ios developer",
+	"mobile developer",
+	"react developer",
+	"node developer",
+	"python developer",
+	"java developer",
+	"ruby developer",
+	"go developer",
+	"golang developer",
+	"rust developer",
+	"php developer",
+	".net developer",
+	"c++ developer",
+	"application developer",
+	"sdet",
+	"game developer",
+	"game programmer",
+	"firmware engineer",
+	"embedded engineer",
+	"embedded software",
+	"programmer analyst",
+	"computer programmer",
 }
 
 // IsFresherJob filters for fresher/intern/junior roles and excludes senior-level or advanced openings.
@@ -171,6 +230,8 @@ func IsFresherJob(title, description string) bool {
 		"intern", "internship", "junior", "entry level", "entry-level", "associate", "trainee", "fresher", "graduate", "campus",
 		"apprentice", "new grad", "new graduate", "graduate program", "graduate engineer trainee",
 		"sde 1", "sde i", "software engineer i", "software engineer 1", "developer i", "developer 1",
+		"software engineer", "software developer", "full stack", "frontend", "backend", "web developer",
+		"react developer", "node developer", "python developer", "java developer", "data analyst", "qa engineer",
 	}
 
 	if hasAnyKeyword(text, juniorKeywords) {
