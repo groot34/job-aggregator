@@ -81,6 +81,15 @@ func (p *IndeedParser) Parse(arg string) ([]models.Job, error) {
 			continue
 		}
 
+		// Indeed commonly shows "30+ days ago" or "Posted 30+ days ago"
+		var postedAt time.Time
+		lowerDate := strings.ToLower(dateText)
+		if strings.Contains(lowerDate, "30+") || strings.Contains(lowerDate, "30 +") {
+			postedAt = time.Now().AddDate(0, 0, -30)
+		} else {
+			postedAt = ParseRelativeDate(dateText)
+		}
+
 		job := models.Job{
 			ID:          "in-" + getIDFromURL(url),
 			Title:       strings.TrimSpace(title),
@@ -89,9 +98,9 @@ func (p *IndeedParser) Parse(arg string) ([]models.Job, error) {
 			Description: strings.TrimSpace(snippet),
 			URL:         url,
 			Source:      "Indeed",
-			PostedAt:    parseRelativeDate(dateText),
+			PostedAt:    postedAt,
 			ScrapedAt:   time.Now(),
-			Remote:      strings.Contains(strings.ToLower(location), "remote") || strings.Contains(strings.ToLower(location), "work from home"),
+			Remote:      strings.Contains(strings.ToLower(location), "remote") || strings.Contains(strings.ToLower(location), "work from home") || strings.Contains(strings.ToLower(location), "hybrid"),
 			Salary:      strings.TrimSpace(salary),
 			Tags:        []string{"indeed"},
 		}
@@ -103,28 +112,4 @@ func (p *IndeedParser) Parse(arg string) ([]models.Job, error) {
 	return jobs, nil
 }
 
-func parseRelativeDate(text string) time.Time {
-	text = strings.ToLower(strings.TrimSpace(text))
-	now := time.Now()
 
-	if strings.Contains(text, "today") || strings.Contains(text, "just posted") || strings.Contains(text, "hours ago") {
-		return now
-	}
-
-	if strings.Contains(text, "30+") {
-		return now.AddDate(0, 0, -30)
-	}
-
-	number := 0
-	for _, part := range strings.Fields(text) {
-		if n, err := fmt.Sscanf(part, "%d", &number); err == nil && n == 1 {
-			break
-		}
-	}
-
-	if strings.Contains(text, "day") && number > 0 {
-		return now.AddDate(0, 0, -number)
-	}
-
-	return now
-}

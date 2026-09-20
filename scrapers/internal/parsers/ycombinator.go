@@ -3,6 +3,7 @@ package parsers
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -42,52 +43,73 @@ func (p *YCombinatorParser) Parse(arg string) ([]models.Job, error) {
 	jsCode := `
 	(function() {
 		const jobs = [];
-		// Try multiple possible selectors
-		const jobElements = document.querySelectorAll('[class*="JobsList_tableRow"], [class*="ycdc-card"], a[href*="/jobs/"]');
-		
+
 		// Get all job links
 		const jobLinks = Array.from(document.querySelectorAll('a[href*="/companies/"][href*="/jobs/"]'));
-		
+
 		jobLinks.forEach(link => {
 			try {
 				const href = link.getAttribute('href');
 				const title = link.textContent.trim();
-				
-				// Find parent container
+
+				// Walk up parents to find the largest reasonable container
 				let parent = link.closest('div');
 				if (!parent) return;
-				
+				// Try to get a wider container if possible
+				for (let i = 0; i < 4 && parent && parent.parentElement; i++) {
+					const p = parent.parentElement;
+					if (p && p.tagName === 'DIV') parent = p;
+				}
+
+				const parentText = parent.textContent || '';
+
 				// Try to find company link in same parent
 				const companyLink = parent.querySelector('a[href*="/companies/"]:not([href*="/jobs/"])');
 				const company = companyLink ? companyLink.textContent.trim() : '';
-				
-				// Extract all text from parent for location/salary
-				const parentText = parent.textContent;
-				
+
 				// Look for location patterns
 				let location = '';
-				const locationMatch = parentText.match(/(Remote|[A-Z][a-z]+,\s*[A-Z]{2}|San Francisco|New York|London|Bangalore)/i);
+				const locationMatch = parentText.match(/(Remote|[A-Z][a-z]+,\s*[A-Z]{2}|San Francisco|New York|London|Bangalore|Bengaluru|Hybrid|On[\s-]?site)/i);
 				if (locationMatch) location = locationMatch[0];
-				
+
 				// Look for salary patterns
 				let salary = '';
 				const salaryMatch = parentText.match(/\$[\d]+K\s*-\s*\$[\d]+K/);
 				if (salaryMatch) salary = salaryMatch[0];
-				
+
+				// Look for a posted-date string: "(about X ago)", "X hours ago", "X days ago"
+				let dateText = '';
+				const dateMatch = parentText.match(/\(?(\b(?:about\s+)?\d+\s+(?:hour|hours|hr|hrs|day|days|week|weeks|month|months|min|minute|minutes)\s+ago)\)?/i);
+				if (dateMatch) dateText = dateMatch[1];
+
+				// Also try explicit time elements
+				if (!dateText) {
+					const timeEl = parent.querySelector('time');
+					if (timeEl) {
+						if (timeEl.getAttribute('datetime')) {
+							dateText = timeEl.getAttribute('datetime');
+						} else if (timeEl.textContent) {
+							dateText = timeEl.textContent.trim();
+						}
+					}
+				}
+
 				if (title && href && company) {
 					jobs.push({
 						title: title,
 						company: company,
 						url: href.startsWith('http') ? href : 'https://www.ycombinator.com' + href,
 						location: location,
-						salary: salary
+						salary: salary,
+						dateText: dateText,
+						fullText: parentText.slice(0, 500)
 					});
 				}
 			} catch(e) {
 				console.error('Error parsing job:', e);
 			}
 		});
-		
+
 		return jobs;
 	})();
 	`
@@ -108,15 +130,42 @@ func (p *YCombinatorParser) Parse(arg string) ([]models.Job, error) {
 	// Convert to Job models
 	var jobs []models.Job
 
+	ycDateFallback := regexp.MustCompile(`(?i)\(?((?:about\s+)?\d+\s+(?:hour|hours|hr|hrs|day|days|week|weeks|month|months|min|minute|minutes)\s+ago)\)?`)
+
 	for _, data := range jobsData {
 		title, _ := data["title"].(string)
 		company, _ := data["company"].(string)
 		url, _ := data["url"].(string)
 		location, _ := data["location"].(string)
 		salary, _ := data["salary"].(string)
+		dateText, _ := data["dateText"].(string)
+		fullText, _ := data["fullText"].(string)
 
 		if title == "" || company == "" || url == "" {
 			continue
+		}
+
+		// If JS didn't capture a dateText, try a last-ditch parse from fullText
+		// (catches the common YC pattern "CompanyName (S21)•blurb(about 19 hours ago)")
+		if dateText == "" && fullText != "" {
+			if m := ycDateFallback.FindStringSubmatch(fullText); m != nil {
+				dateText = m[1]
+			}
+		}
+
+		// Parse the posted date. Fall back to scrape time if the format is unknown.
+		var postedAt time.Time
+		if dateText != "" {
+			// Try ISO date first (time[datetime])
+			if t, err := time.Parse(time.RFC3339, dateText); err == nil {
+				postedAt = t
+			} else if t, err := time.Parse("2006-01-02", dateText); err == nil {
+				postedAt = t
+			} else {
+				postedAt = ParseRelativeDate(dateText)
+			}
+		} else {
+			postedAt = time.Now()
 		}
 
 		// Extract batch and create tags
@@ -127,7 +176,10 @@ func (p *YCombinatorParser) Parse(arg string) ([]models.Job, error) {
 			batchEnd := strings.Index(company, ")")
 			if batchStart < batchEnd {
 				batch := strings.TrimSpace(company[batchStart+1 : batchEnd])
-				tags = append(tags, "YC-"+batch)
+				// Only add batch codes that look like "W24", "S21", etc.
+				if len(batch) <= 4 {
+					tags = append(tags, "YC-"+batch)
+				}
 			}
 		}
 
@@ -136,17 +188,28 @@ func (p *YCombinatorParser) Parse(arg string) ([]models.Job, error) {
 		jobID = strings.ReplaceAll(jobID, "/", "-")
 
 		// Check if remote
-		isRemote := strings.Contains(strings.ToLower(location), "remote")
+		lowerLocation := strings.ToLower(location)
+		isRemote := strings.Contains(lowerLocation, "remote")
+
+		// Build description from the page text snippet (truncate long)
+		description := ""
+		if fullText != "" {
+			// strip leading whitespace
+			description = strings.TrimSpace(fullText)
+			if len(description) > 800 {
+				description = description[:800]
+			}
+		}
 
 		job := models.Job{
 			ID:          jobID,
 			Title:       strings.TrimSpace(title),
 			Company:     strings.TrimSpace(company),
 			Location:    strings.TrimSpace(location),
-			Description: "",
+			Description: description,
 			URL:         url,
 			Source:      "YCombinator",
-			PostedAt:    time.Now(),
+			PostedAt:    postedAt,
 			ScrapedAt:   time.Now(),
 			Remote:      isRemote,
 			Salary:      salary,

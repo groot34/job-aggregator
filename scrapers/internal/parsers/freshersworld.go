@@ -37,6 +37,18 @@ func (p *FreshersworldParser) Parse(arg string) ([]models.Job, error) {
 		location := e.ChildText(".job-location")
 		desc := e.ChildText(".job-desc")
 		relURL := e.ChildAttr("a[href]", "href")
+		// Try multiple common selectors for posted date
+		dateText := e.ChildText(".job-posted-date")
+		if dateText == "" {
+			dateText = e.ChildText(".posted-date")
+		}
+		if dateText == "" {
+			dateText = e.ChildText("span.date")
+		}
+		if dateText == "" {
+			// last-ditch: scan the whole card text for a relative date string
+			dateText = e.Text
+		}
 
 		// Skip if essential data missing
 		if title == "" || relURL == "" {
@@ -48,18 +60,33 @@ func (p *FreshersworldParser) Parse(arg string) ([]models.Job, error) {
 			company = "Unknown"
 		}
 
+		// Freshersworld date parsing is spotty, best-effort parse relative otherwise use scrape time
+		postedAt := ParseRelativeDate(dateText)
+
+		lowerLoc := strings.ToLower(location)
+		isRemote := strings.Contains(lowerLoc, "remote") ||
+			strings.Contains(lowerLoc, "work from home") ||
+			strings.Contains(lowerLoc, "hybrid") ||
+			strings.Contains(lowerLoc, "wfh")
+
+		// Make relative links absolute
+		absURL := relURL
+		if !strings.HasPrefix(absURL, "http") {
+			absURL = "https://www.freshersworld.com" + absURL
+		}
+
 		job := models.Job{
 			ID:          "fw-" + getIDFromURL(relURL),
 			Title:       strings.TrimSpace(title),
 			Company:     strings.TrimSpace(company),
 			Location:    strings.TrimSpace(location),
 			Description: strings.TrimSpace(desc),
-			URL:         relURL, // often absolute, if relative need to prepend
+			URL:         absURL,
 			Source:      "Freshersworld",
-			PostedAt:    time.Now(), // Date parsing is complex on FW
+			PostedAt:    postedAt,
 			ScrapedAt:   time.Now(),
-			Remote:      false, // Typically on-site
-			Tags:        []string{"fresher", "india"},
+			Remote:      isRemote,
+			Tags:        []string{"freshersworld", "fresher", "india"},
 		}
 
 		jobs = append(jobs, job)

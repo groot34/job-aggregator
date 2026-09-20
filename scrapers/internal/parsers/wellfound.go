@@ -41,6 +41,11 @@ func (p *WellfoundParser) Parse(arg string) ([]models.Job, error) {
 		title := e.ChildText("h2") // Often h2 or similar
 		company := e.ChildText("div[data-test='StartupName']")
 		link := e.ChildAttr("a", "href")
+		location := e.ChildText("[data-test='Location']")
+		if location == "" {
+			location = e.ChildText(".job-list-item__location")
+		}
+		salary := e.ChildText("[data-test='Compensation']")
 
 		if title == "" {
 			return
@@ -51,15 +56,27 @@ func (p *WellfoundParser) Parse(arg string) ([]models.Job, error) {
 			link = "https://wellfound.com" + link
 		}
 
+		// Posted date extraction — try relative date strings in the card text
+		postedAt := ParseRelativeDate(e.Text)
+
+		lowerLoc := strings.ToLower(location)
+		isRemote := strings.Contains(lowerLoc, "remote") ||
+			strings.Contains(strings.ToLower(title), "remote") ||
+			strings.Contains(lowerLoc, "hybrid")
+
 		job := models.Job{
 			ID:          "wf-" + getIDFromURL(link),
 			Title:       strings.TrimSpace(title),
 			Company:     strings.TrimSpace(company),
+			Location:    strings.TrimSpace(location),
 			URL:         link,
 			Source:      "Wellfound",
-			PostedAt:    time.Now(),
+			PostedAt:    postedAt,
 			ScrapedAt:   time.Now(),
 			Description: "View on Wellfound",
+			Remote:      isRemote,
+			Salary:      strings.TrimSpace(salary),
+			Tags:        []string{"wellfound", "startup"},
 		}
 
 		jobs = append(jobs, job)
