@@ -2,6 +2,7 @@ package parsers
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -22,4 +23,60 @@ func getIDFromURL(url string) string {
 		return fmt.Sprint(time.Now().UnixNano())
 	}
 	return parts[len(parts)-1]
+}
+
+var relativeNumRe = regexp.MustCompile(`(\d+)\s*(hour|hours|hr|hrs|day|days|d|week|weeks|wk|wks|month|months|min|mins|minute|minutes|second|seconds)`)
+
+// ParseRelativeDate converts strings like "about 19 hours ago",
+// "3 days ago", "Active 28 days ago", "just posted", "today" into
+// an absolute time.Time value. Falls back to time.Now() on empty input.
+func ParseRelativeDate(text string) time.Time {
+	text = strings.ToLower(strings.TrimSpace(text))
+	now := time.Now()
+
+	if text == "" {
+		return now
+	}
+
+	if strings.Contains(text, "today") ||
+		strings.Contains(text, "just posted") ||
+		strings.Contains(text, "hiring ongoing") ||
+		strings.Contains(text, "posted today") {
+		return now
+	}
+
+	match := relativeNumRe.FindStringSubmatch(text)
+	if match == nil {
+		// fallback: if "ago" is present without a number, guess 1 day
+		if strings.Contains(text, "ago") {
+			return now.AddDate(0, 0, -1)
+		}
+		return now
+	}
+
+	n := 0
+	if _, err := fmt.Sscanf(match[1], "%d", &n); err != nil || n <= 0 {
+		return now
+	}
+	unit := match[2]
+
+	switch unit {
+	case "hour", "hours", "hr", "hrs":
+		return now.Add(-time.Duration(n) * time.Hour)
+	case "day", "days", "d":
+		return now.AddDate(0, 0, -n)
+	case "week", "weeks", "wk", "wks":
+		return now.AddDate(0, 0, -n*7)
+	case "month", "months":
+		if n > 12 {
+			n = 12
+		}
+		return now.AddDate(0, -n, 0)
+	case "min", "mins", "minute", "minutes":
+		return now.Add(-time.Duration(n) * time.Minute)
+	case "second", "seconds":
+		return now.Add(-time.Duration(n) * time.Second)
+	}
+
+	return now
 }

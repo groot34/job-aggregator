@@ -77,8 +77,25 @@ func runScrapers(siteParsers []parsers.Parser) {
 				continue
 			}
 
-			// Add extracted skills to the job model
-			j.Tags = skills.ExtractSkills(fullText)
+			// Merge parser-provided tags (source, batch, etc.) with extracted skill tags, dedupe
+			extractedSkills := skills.ExtractSkills(fullText)
+			seen := make(map[string]bool)
+			var merged []string
+			for _, t := range j.Tags {
+				tag := strings.TrimSpace(t)
+				if tag != "" && !seen[tag] {
+					seen[tag] = true
+					merged = append(merged, tag)
+				}
+			}
+			for _, s := range extractedSkills {
+				tag := strings.TrimSpace(s)
+				if tag != "" && !seen[tag] {
+					seen[tag] = true
+					merged = append(merged, tag)
+				}
+			}
+			j.Tags = merged
 			allFilteredJobs = append(allFilteredJobs, j)
 
 			// Print for demo
