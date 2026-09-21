@@ -50,13 +50,60 @@ export const createJobsBatch = async (req: Request, res: Response) => {
       };
     });
 
+    const now = new Date();
+    const sourcesInBatch = [...new Set(jobs.map((j) => j.source).filter(Boolean) as string[])];
+    const externalIdsInBatch = [...new Set(jobs.map((j) => j.externalId).filter(Boolean) as string[])];
+
     if (operations.length > 0) {
       const result = await Job.bulkWrite(operations);
       console.log(`📦 Processed ${jobs.length} jobs: ${result.upsertedCount} inserted, ${result.modifiedCount} updated.`);
-      return res.status(200).json({ 
-        message: 'Batch processed', 
-        inserted: result.upsertedCount, 
-        updated: result.modifiedCount 
+
+      // ---------------------------------------------------------------------
+      // 1. Mark-stale: any job from the scraped sources that was NOT re-seen
+      //    in this batch AND has not been scraped in the last ~36h (≈3 cron
+      //    cycles at 12h intervals) is very likely "no longer on the site".
+      // ---------------------------------------------------------------------
+      const recentlyScrapedCutoff = new Date(now.getTime() - 36 * 60 * 60 * 1000);
+      let staled = 0;
+      if (sourcesInBatch.length > 0) {
+        const staleRes = await Job.updateMany(
+          {
+            source: { $in: sourcesInBatch },
+            active: true,
+            scrapedAt: { $lt: recentlyScrapedCutoff },
+            ...(externalIdsInBatch.length > 0 ? { externalId: { $nin: externalIdsInBatch } } : {}),
+          },
+          { $set: { active: false } }
+        );
+        staled = staleRes.modifiedCount ?? 0;
+        if (staled > 0) {
+          console.log(`🧽 Marked ${staled} jobs INACTIVE (disappeared from source and not re-scraped since ${recentlyScrapedCutoff.toISOString()})`);
+        }
+      }
+
+      // ---------------------------------------------------------------------
+      // 2. Hard-delete ceiling: anything older than 45 days regardless, plus
+      //    any already-inactive job that was last updated more than 14d ago.
+      //    Prevents the DB from keeping listings that died months ago.
+      // ---------------------------------------------------------------------
+      const postedCutoff = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+      const inactiveUpdatedCutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      const deletedRes = await Job.deleteMany({
+        $or: [
+          { postedAt: { $lt: postedCutoff } },
+          { active: false, updatedAt: { $lt: inactiveUpdatedCutoff } },
+        ],
+      });
+      if (deletedRes.deletedCount) {
+        console.log(`🗑️  Hard-deleted ${deletedRes.deletedCount} jobs (posted<45d OR inactive>14d)`);
+      }
+
+      return res.status(200).json({
+        message: 'Batch processed',
+        inserted: result.upsertedCount,
+        updated: result.modifiedCount,
+        markedInactive: staled,
+        hardDeleted: deletedRes.deletedCount ?? 0,
       });
     }
 

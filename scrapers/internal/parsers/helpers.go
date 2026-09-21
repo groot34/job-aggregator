@@ -7,6 +7,25 @@ import (
 	"time"
 )
 
+// closedListingKeywords are phrases that mean "don't bother the user with this one".
+// If any of these appear literally on the card page, the parser emits nothing for it.
+var closedListingKeywords = []string{
+	"no longer accepting applications",
+	"applications closed",
+	"application closed",
+	"this job is no longer accepting applications",
+	"job closed",
+	"vacancy closed",
+	"no longer accepting",
+	"closed to applicants",
+	"we are no longer hiring for this role",
+	"hiring paused",
+	"not accepting applications",
+	"role filled",
+	"this role has been filled",
+	"position closed",
+}
+
 func getIDFromURL(url string) string {
 	url = strings.TrimSpace(url)
 	if url == "" {
@@ -23,6 +42,19 @@ func getIDFromURL(url string) string {
 		return fmt.Sprint(time.Now().UnixNano())
 	}
 	return parts[len(parts)-1]
+}
+
+// IsClosedListing returns true when the visible page/card text contains any
+// "closed / no longer accepting" phrase. This lets each parser drop dead jobs
+// before they ever enter the DB, so the UI never shows stale "closed" cards.
+func IsClosedListing(pageText string) bool {
+	lower := strings.ToLower(pageText)
+	for _, kw := range closedListingKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 var relativeNumRe = regexp.MustCompile(`(\d+)\s*(hour|hours|hr|hrs|day|days|d|week|weeks|wk|wks|month|months|min|mins|minute|minutes|second|seconds)`)

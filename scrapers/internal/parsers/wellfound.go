@@ -51,6 +51,10 @@ func (p *WellfoundParser) Parse(arg string) ([]models.Job, error) {
 			return
 		}
 
+		if IsClosedListing(e.Text) {
+			return
+		}
+
 		// Wellfound URLs are relative often
 		if !strings.HasPrefix(link, "http") {
 			link = "https://wellfound.com" + link

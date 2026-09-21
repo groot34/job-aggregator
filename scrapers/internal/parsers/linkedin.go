@@ -49,6 +49,10 @@ func (p *LinkedInParser) Parse(arg string) ([]models.Job, error) {
 			return
 		}
 
+		if IsClosedListing(e.Text) {
+			return
+		}
+
 		jobID := "li-" + getIDFromURL(link)
 		if seenJobIDs[jobID] {
 			return

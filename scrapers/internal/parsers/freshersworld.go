@@ -55,6 +55,10 @@ func (p *FreshersworldParser) Parse(arg string) ([]models.Job, error) {
 			return
 		}
 
+		if IsClosedListing(e.Text) {
+			return
+		}
+
 		// Freshersworld often puts "Company Name" in a specific structure, fallback if dry
 		if company == "" {
 			company = "Unknown"

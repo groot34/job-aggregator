@@ -145,6 +145,10 @@ func (p *YCombinatorParser) Parse(arg string) ([]models.Job, error) {
 			continue
 		}
 
+		if IsClosedListing(title+" "+company+" "+fullText) {
+			continue
+		}
+
 		// If JS didn't capture a dateText, try a last-ditch parse from fullText
 		// (catches the common YC pattern "CompanyName (S21)•blurb(about 19 hours ago)")
 		if dateText == "" && fullText != "" {

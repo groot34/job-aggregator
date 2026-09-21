@@ -81,6 +81,10 @@ func (p *IndeedParser) Parse(arg string) ([]models.Job, error) {
 			continue
 		}
 
+		if IsClosedListing(title + " " + company + " " + location + " " + snippet + " " + dateText) {
+			continue
+		}
+
 		// Indeed commonly shows "30+ days ago" or "Posted 30+ days ago"
 		var postedAt time.Time
 		lowerDate := strings.ToLower(dateText)
