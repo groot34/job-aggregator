@@ -16,13 +16,39 @@ export const createJobsBatch = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Payload must be an array of jobs' });
     }
 
-    const operations = jobs.map((job) => ({
-      updateOne: {
-        filter: { externalId: job.externalId }, // potential dup check by ID
-        update: { $set: job },
-        upsert: true,
-      },
-    }));
+    const operations = jobs.map((job) => {
+      // Fields that should be written only on first insert and never overwritten
+      // by subsequent re-scrapes (otherwise postedAt keeps jumping to "Now"
+      // every run and we lose the real age of a listing).
+      const setOnInsert: Record<string, unknown> = {
+        externalId: job.externalId,
+        postedAt: job.postedAt ?? new Date(),
+      };
+
+      // Fields that may legitimately change between scrapes (tags improve,
+      // salary/description/location are refreshed, etc.)
+      const $set: Record<string, unknown> = {
+        title: job.title,
+        company: job.company,
+        location: job.location ?? '',
+        description: job.description ?? '',
+        url: job.url,
+        source: job.source,
+        scrapedAt: job.scrapedAt ?? new Date(),
+        remote: job.remote ?? false,
+        active: true,
+      };
+      if (job.salary !== undefined && job.salary !== null) $set.salary = job.salary;
+      if (Array.isArray(job.tags)) $set.tags = job.tags;
+
+      return {
+        updateOne: {
+          filter: { externalId: job.externalId },
+          update: { $setOnInsert: setOnInsert, $set },
+          upsert: true,
+        },
+      };
+    });
 
     if (operations.length > 0) {
       const result = await Job.bulkWrite(operations);
